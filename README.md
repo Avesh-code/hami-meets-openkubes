@@ -59,7 +59,7 @@ Kubernetes hands out GPUs **whole**. HAMi slices each physical GPU into **virtua
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-user>/hami-gpu-sharing-lab.git && cd hami-gpu-sharing-lab
+git clone https://github.com/Avesh-code/hami-meets-openkubes.git && cd hami-meets-openkubes
 export GPU_NODE=<your-gpu-node>
 
 # Case 0a: BEFORE (stock NVIDIA plugin still installed)
@@ -96,7 +96,7 @@ All cases, step by step: [docs/06-test-cases.md](docs/06-test-cases.md)
 ## Repository layout
 
 ```
-hami-gpu-sharing-lab/
+hami-meets-openkubes/
 ├── README.md
 ├── docs/                           # 01–07, read in order
 ├── manifests/
