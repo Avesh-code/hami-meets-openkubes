@@ -155,4 +155,4 @@ hami-meets-openkubes/
 
 ## License
 
-Apache-2.0 (add a `LICENSE` file before publishing)
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Avesh Padaya.
