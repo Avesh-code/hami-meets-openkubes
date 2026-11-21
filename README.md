@@ -1,4 +1,4 @@
-# HAMi GPU Sharing Lab
+# HAMi Meets openkubes
 
 ### Fractional GPUs, multi-tenant isolation and smarter scheduling on Kubernetes
 
