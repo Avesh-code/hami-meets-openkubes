@@ -1,0 +1,20 @@
+# CASE 4 — Multiple GPUs, each with a fixed memory slice
+# gpumem applies PER physical GPU: 2 GPUs x 20 GB = 40 GB total, not 20 GB split.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case4-multi-gpu-sliced
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case4
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["bash", "-c", "nvidia-smi -L; nvidia-smi; sleep infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 2          # CONTRACT: 2 physical GPUs
+          nvidia.com/gpumem: 20480   # CONTRACT: 20 GB on EACH (40 GB total)

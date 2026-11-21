@@ -1,0 +1,8 @@
+# Namespace for the single-tenant test cases (1–5, 8).
+# Case 0 uses its own namespace (gpu-demo); Case 6–7 create team-a and team-b.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hami-lab
+  labels:
+    lab: hami

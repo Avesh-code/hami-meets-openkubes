@@ -1,0 +1,36 @@
+# HAMi Helm values used for this lab (tested against chart 2.11.0).
+# Optional: add  -f manifests/hami-values.yaml  to the helm install in docs/05-hami-installation.md (5.3).
+#
+# Keys and defaults: helm show values hami-charts/hami --version 2.11.0
+
+# ---------------- Sharing (moved from devicePlugin.* in chart 2.11) ----------------
+devices:
+  nvidia:
+    deviceSplitCount: 10        # max vGPUs (pods) per physical GPU      (default 10)
+    deviceMemoryScaling: 1      # 1 = no memory overcommit                (default 1)
+    deviceCoreScaling: 1        # 1 = no compute overcommit               (default 1)
+    # Option B only (GPU Operator):
+    # runtimeClassName: nvidia
+
+# ---------------- Device plugin ----------------
+devicePlugin:
+  # --- Option A: driver + NVIDIA Container Toolkit installed on the host ---
+  nvidiaDriverRoot: /
+  gpuOperatorToolkitReady:
+    enabled: false
+
+  # --- Option B: NVIDIA GPU Operator manages driver + toolkit (use instead of A) ---
+  # nvidiaDriverRoot: /run/nvidia/driver
+  # deviceListStrategy: envvar
+  # gpuOperatorToolkitReady:
+  #   enabled: true
+
+# ---------------- Scheduler ----------------
+scheduler:
+  # Set the kube-scheduler tag to the API server version on the helm command line:
+  #   --set scheduler.kubeScheduler.imageTag=v1.31.14
+  defaultSchedulerPolicy:
+    nodeSchedulerPolicy: binpack   # across nodes   (chart default: binpack)
+    gpuSchedulerPolicy: spread     # across GPUs    (chart default: spread)
+    # Test cases override these per pod with annotations:
+    #   hami.io/node-scheduler-policy / hami.io/gpu-scheduler-policy

@@ -1,0 +1,71 @@
+# CASE 5 — Enforcement: does the memory cap actually hold under real allocation?
+#
+# Prerequisite (creates the probe script ConfigMap from scripts/gpu_alloc_test.py):
+#   kubectl -n hami-lab create configmap gpu-alloc-test --from-file=scripts/gpu_alloc_test.py
+#
+# 5a  capped pod   : contract 5 GB, tries to allocate 8 GB  -> must OOM near 5 GB   (EXPECT=oom)
+# 5b  control pod  : contract 10 GB, tries to allocate 8 GB -> must succeed         (EXPECT=success)
+#
+# The control proves the failure in 5a comes from the HAMi cap, not from the script or the card.
+# Image note: pytorch runtime images are large (~3+ GB) — pre-pull on the GPU node before recording.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case5a-capped
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case5
+spec:
+  restartPolicy: Never
+  containers:
+    - name: probe
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["python", "/probe/gpu_alloc_test.py"]
+      env:
+        - { name: MODE,             value: "probe" }
+        - { name: ALLOC_TARGET_MIB, value: "8192" }
+        - { name: CHUNK_MIB,        value: "256" }
+        - { name: EXPECT,           value: "oom" }
+        - { name: HOLD_SECONDS,     value: "600" }   # keep pod Running so evidence can be collected
+      volumeMounts:
+        - { name: probe, mountPath: /probe }
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 5120      # CONTRACT: hard cap 5 GB
+  volumes:
+    - name: probe
+      configMap:
+        name: gpu-alloc-test
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case5b-control
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case5
+spec:
+  restartPolicy: Never
+  containers:
+    - name: probe
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["python", "/probe/gpu_alloc_test.py"]
+      env:
+        - { name: MODE,             value: "probe" }
+        - { name: ALLOC_TARGET_MIB, value: "8192" }
+        - { name: CHUNK_MIB,        value: "256" }
+        - { name: EXPECT,           value: "success" }
+        - { name: HOLD_SECONDS,     value: "600" }
+      volumeMounts:
+        - { name: probe, mountPath: /probe }
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 10240     # CONTRACT: 10 GB — enough for the 8 GB target
+  volumes:
+    - name: probe
+      configMap:
+        name: gpu-alloc-test

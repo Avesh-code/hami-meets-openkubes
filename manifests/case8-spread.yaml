@@ -1,0 +1,27 @@
+# CASE 8a — Scheduling policy: SPREAD
+# 8 identical small pods. On a 4-GPU node, spread => 2 pods on EVERY GPU (no whole card left).
+# Compare with case8-binpack.yaml. Run one at a time on an otherwise empty node.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case8-spread
+  namespace: hami-lab
+  labels: { lab: hami, case: case8 }
+spec:
+  replicas: 8
+  selector:
+    matchLabels: { app: case8-spread }
+  template:
+    metadata:
+      labels: { app: case8-spread, lab: hami, case: case8, policy: spread }
+      annotations:
+        hami.io/gpu-scheduler-policy: "spread"
+    spec:
+      containers:
+        - name: cuda
+          image: nvidia/cuda:12.4.1-base-ubuntu22.04
+          command: ["bash", "-c", "sleep infinity"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem: 2048   # small enough that all 8 fit on one card (8 x 2 GB = 16 GB)

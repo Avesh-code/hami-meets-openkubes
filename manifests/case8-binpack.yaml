@@ -1,0 +1,27 @@
+# CASE 8b — Scheduling policy: BINPACK
+# Same 8 pods. binpack => all packed onto ONE physical GPU (3 whole cards stay free) — whole cards
+# for training jobs (Case 2/3). Compare with case8-spread.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case8-binpack
+  namespace: hami-lab
+  labels: { lab: hami, case: case8 }
+spec:
+  replicas: 8
+  selector:
+    matchLabels: { app: case8-binpack }
+  template:
+    metadata:
+      labels: { app: case8-binpack, lab: hami, case: case8, policy: binpack }
+      annotations:
+        hami.io/gpu-scheduler-policy: "binpack"
+    spec:
+      containers:
+        - name: cuda
+          image: nvidia/cuda:12.4.1-base-ubuntu22.04
+          command: ["bash", "-c", "sleep infinity"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              nvidia.com/gpumem: 2048   # small enough that all 8 fit on one card (8 x 2 GB = 16 GB)

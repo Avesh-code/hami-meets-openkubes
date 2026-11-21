@@ -1,0 +1,20 @@
+# CASE 3 — Multiple whole GPUs to one pod (e.g. multi-GPU training)
+# In a pod request, nvidia.com/gpu = DISTINCT physical GPUs. HAMi will not stack
+# slices of one card. Needs 2 free physical cards on a single node.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case3-multi-gpu-whole
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case3
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["bash", "-c", "nvidia-smi -L; sleep infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 2          # CONTRACT: 2 distinct full physical GPUs

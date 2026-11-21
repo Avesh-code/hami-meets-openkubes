@@ -1,0 +1,20 @@
+# CASE 7 — Over quota. Run right after Case 6, while its pods are still running:
+# team-a already holds 10 GB (its full quota).
+# This pod asks for 5 GB more. Expected: HAMi's admission webhook rejects it at creation:
+#   admission webhook "vgpu.hami.io" denied the request: exceeding resource quota for device NVIDIA
+apiVersion: v1
+kind: Pod
+metadata:
+  name: team-a-over-quota
+  namespace: team-a
+  labels: { lab: hami, case: case7, tenant: team-a }
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["bash", "-c", "sleep infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 5120      # would push team-a to 15 GB > 10 GB quota

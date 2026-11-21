@@ -1,0 +1,35 @@
+# CASE 0b — AFTER HAMi — the same app, one line added: nvidia.com/gpumem.
+#
+#   kubectl apply -f manifests/case0-after-hami.yaml
+#   kubectl -n gpu-demo scale deploy gpu-app --replicas=10
+#   -> on a 4-GPU node with HAMi (40 vGPUs): 10/10 Running, each sees 4096 MiB
+#
+# Without the gpumem line, HAMi treats the request as "whole card" and you are back to 4 pods.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpu-demo
+  labels: { lab: hami }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-app
+  namespace: gpu-demo
+  labels: { lab: hami, app: gpu-app, case: case0 }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: gpu-app }
+  template:
+    metadata:
+      labels: { app: gpu-app, lab: hami, case: case0 }
+    spec:
+      containers:
+        - name: app
+          image: nvidia/cuda:12.4.1-base-ubuntu22.04
+          command: ["bash", "-c", "nvidia-smi -L; sleep infinity"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1          # 1 physical GPU to share from
+              nvidia.com/gpumem: 4096    # NEW: only 4 GB of it  -> many pods per card

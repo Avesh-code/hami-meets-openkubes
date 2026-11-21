@@ -1,0 +1,19 @@
+# CASE 2 — One whole GPU to one pod (legacy behaviour)
+# No gpumem / gpucores => no cap: the container sees the entire card.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case2-whole-gpu
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case2
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["bash", "-c", "nvidia-smi -L; nvidia-smi; sleep infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1          # CONTRACT: 1 full physical GPU

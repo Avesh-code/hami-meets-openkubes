@@ -1,0 +1,129 @@
+# CASE 6 — Multi-tenancy: two teams, one physical GPU, per-namespace GPU quotas
+#
+# Story:
+#   team-b runs a steady "good neighbour" workload (heartbeat every 5 s).
+#   team-a, on the SAME physical card, runs a probe that blows through its 5 GB cap.
+#   -> team-a gets OOM; team-b's heartbeat never stops.           (isolation)
+#   team-a ends at exactly its 10 GB quota; Case 7 (case7-over-quota.yaml) then asks for more.
+#
+# Prerequisites: create the namespaces and the probe script ConfigMap BEFORE applying
+# this file, so the pods don't sit in ContainerCreating waiting for the ConfigMap:
+#   kubectl create namespace team-a; kubectl create namespace team-b
+#   kubectl -n team-a create configmap gpu-alloc-test --from-file=scripts/gpu_alloc_test.py
+#   kubectl -n team-b create configmap gpu-alloc-test --from-file=scripts/gpu_alloc_test.py
+#
+# Quota keys use the "limits." prefix so the HAMi scheduler enforces them
+# (requires a HAMi release that includes NVIDIA ResourceQuota support).
+# binpack annotations make both tenants land on the same physical GPU.
+# --------------------------------------------------------------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels: { lab: hami, tenant: team-a }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-b
+  labels: { lab: hami, tenant: team-b }
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-quota
+  namespace: team-a
+spec:
+  hard:
+    limits.nvidia.com/gpu: "4"
+    limits.nvidia.com/gpumem: "10240"     # CONTRACT: team-a may hold at most 10 GB of GPU memory
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-quota
+  namespace: team-b
+spec:
+  hard:
+    limits.nvidia.com/gpu: "4"
+    limits.nvidia.com/gpumem: "20480"     # CONTRACT: team-b may hold at most 20 GB
+---
+# team-b: steady good-neighbour workload
+apiVersion: v1
+kind: Pod
+metadata:
+  name: team-b-steady
+  namespace: team-b
+  labels: { lab: hami, case: case6, tenant: team-b }
+  annotations:
+    hami.io/gpu-scheduler-policy: "binpack"
+spec:
+  restartPolicy: Never
+  containers:
+    - name: steady
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["python", "/probe/gpu_alloc_test.py"]
+      env:
+        - { name: MODE,              value: "steady" }
+        - { name: HOLD_MIB,          value: "4096" }
+        - { name: HEARTBEAT_SECONDS, value: "5" }
+      volumeMounts:
+        - { name: probe, mountPath: /probe }
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 5120
+  volumes:
+    - name: probe
+      configMap: { name: gpu-alloc-test }
+---
+# team-a: noisy neighbour — tries 8 GB inside a 5 GB slice
+apiVersion: v1
+kind: Pod
+metadata:
+  name: team-a-noisy
+  namespace: team-a
+  labels: { lab: hami, case: case6, tenant: team-a }
+  annotations:
+    hami.io/gpu-scheduler-policy: "binpack"
+spec:
+  restartPolicy: Never
+  containers:
+    - name: probe
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+      command: ["python", "/probe/gpu_alloc_test.py"]
+      env:
+        - { name: MODE,             value: "probe" }
+        - { name: ALLOC_TARGET_MIB, value: "8192" }
+        - { name: EXPECT,           value: "oom" }
+        - { name: START_DELAY_SECONDS, value: "45" }   # let team-b's heartbeat get going first
+        - { name: HOLD_SECONDS,     value: "600" }
+      volumeMounts:
+        - { name: probe, mountPath: /probe }
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 5120
+  volumes:
+    - name: probe
+      configMap: { name: gpu-alloc-test }
+---
+# team-a: second pod — brings team-a to exactly its 10 GB quota
+apiVersion: v1
+kind: Pod
+metadata:
+  name: team-a-filler
+  namespace: team-a
+  labels: { lab: hami, case: case6, tenant: team-a }
+  annotations:
+    hami.io/gpu-scheduler-policy: "binpack"
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["bash", "-c", "nvidia-smi -L; sleep infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/gpumem: 5120

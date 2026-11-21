@@ -1,0 +1,40 @@
+# CASE 1 — Fractional sharing: many small pods on one physical GPU
+#
+# 15 pods x 5 GB each, on a 4-GPU node. Whichever ceiling is hit first decides how
+# many pods fit per card: the split count (10) or the card's memory.
+#   80 GB card: 10 + 5          (split count first: 10 x 5 GB = 50 GB < 80 GB)
+#   24 GB card: 4 + 4 + 4 + 3   (memory first: 4 x 5 GB = 20 GB)
+#
+# NOTE: the chart's default GPU policy is "spread", which would scatter these pods
+# across all cards. The binpack annotation below makes sharing visible. Case 8
+# compares both policies on purpose.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case1-fractional
+  namespace: hami-lab
+  labels:
+    lab: hami
+    case: case1
+spec:
+  replicas: 15
+  selector:
+    matchLabels:
+      app: case1-fractional
+  template:
+    metadata:
+      labels:
+        app: case1-fractional
+        lab: hami
+        case: case1
+      annotations:
+        hami.io/gpu-scheduler-policy: "binpack"
+    spec:
+      containers:
+        - name: cuda
+          image: nvidia/cuda:12.4.1-base-ubuntu22.04
+          command: ["bash", "-c", "nvidia-smi -L; sleep infinity"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1          # one physical GPU to share from
+              nvidia.com/gpumem: 5120    # CONTRACT: 5 GB visible per pod
