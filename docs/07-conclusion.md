@@ -14,15 +14,15 @@ With HAMi, the same node advertised **40 vGPUs**, and all 10 replicas ran, each 
 
 | # | Case | Expected | Observed |
 |---|---|---|---|
-| 0 | Before vs after HAMi | capacity 4 → 40; 4/10 → 10/10 Running | ⏳ |
-| 1 | Fractional sharing | 15 pods on 4 GPUs, each sees 5120 MiB | ⏳ |
-| 2 | Whole GPU | full card visible, no sharing | ⏳ |
-| 3 | Multi-GPU, whole | 2 distinct UUIDs, full memory | ⏳ |
-| 4 | Multi-GPU, sliced | 2 UUIDs, 20480 MiB each | ⏳ |
-| 5 | OOM enforcement | capped pod OOMs just below 5120 MiB; control succeeds | OOM at ⏳ MiB |
-| 6 | Multi-tenant | team-a OOMs; team-b heartbeat uninterrupted | team-a OOM at 4608 MiB (HAMi-core: `5544869888 / 5368709120`); heartbeat ⏳ |
-| 7 | Over quota | over-quota pod is refused | Rejected at creation: `admission webhook "vgpu.hami.io" denied the request: exceeding resource quota for device NVIDIA` |
-| 8 | binpack vs spread | spread 2,2,2,2 → 2-GPU job Pending; binpack 8,0,0,0 → it runs | ⏳ |
+| 0 | Before vs after HAMi | capacity 4 → 40; 4/10 → 10/10 Running | ✅ Before: `nvidia.com/gpu: 4`, deployment **4/10** (6 Pending). After: `nvidia.com/gpu: 40`, deployment **10/10** Running |
+| 1 | Fractional sharing | 15 pods on 4 GPUs, each sees 5120 MiB | ✅ 15/15 Running; `nvidia-smi` inside a pod: `0MiB / 5120MiB` |
+| 2 | Whole GPU | full card visible, no sharing | ✅ 1 × L40S, `46068MiB` total visible (no HAMi cap) |
+| 3 | Multi-GPU, whole | 2 distinct UUIDs, full memory | ✅ 2 × L40S (bus `82:00.0`, `E3:00.0`), `46068MiB` each; 2 distinct UUIDs in `nvidia-smi -L` |
+| 4 | Multi-GPU, sliced | 2 UUIDs, 20480 MiB each | ✅ 2 × L40S (bus `82:00.0`, `E3:00.0`), `0MiB / 20480MiB` each |
+| 5 | OOM enforcement | capped pod OOMs just below 5120 MiB; control succeeds | ✅ 5a: `visible_total_mib=5120`, OOM at **4608 MiB** → `PASS expected=oom`. 5b: `visible_total_mib=10240`, `SUCCESS allocated_mib=8192` → `PASS expected=success` |
+| 6 | Multi-tenant | team-a OOMs; team-b heartbeat uninterrupted | ✅ all 3 pods on the same GPU; team-a OOM at 4608 MiB (HAMi-core: `5544869888 / 5368709120`); team-b heartbeat every 5 s with no gap across the OOM (n=1…47), `matmul_ms` 19.0–20.1 (81.5 on the first warm-up beat) |
+| 7 | Over quota | over-quota pod is refused | ✅ Rejected at creation: `admission webhook "vgpu.hami.io" denied the request: exceeding resource quota for device NVIDIA` |
+| 8 | binpack vs spread | spread 2,2,2,2 → 2-GPU job Pending; binpack 8,0,0,0 → it runs | ✅ spread: **2,2,2,2** → 2-GPU pod Pending (`0/1 nodes are available: 1 4/4 CardInsufficientMemory`). binpack: **8,0,0,0** → 2-GPU pod Running on 2 distinct UUIDs |
 
 Together, they cover the four things a GPU-sharing layer has to get right:
 

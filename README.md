@@ -142,7 +142,7 @@ hami-meets-openkubes/
 | GPUs | 4 × NVIDIA L40S |
 | Kubernetes | v1.31.14 (kubeadm, containerd 2.2.1) |
 | HAMi chart | 2.11.0 |
-| CUDA (driver) | 12.8 |
+| Driver / CUDA | 570.195.03 / 12.8 |
 
 ---
 

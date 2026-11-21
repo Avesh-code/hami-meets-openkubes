@@ -57,7 +57,7 @@ You can reproduce this exactly with **[Case 0a](06-test-cases.md#case-0--before-
 | More GPU pods than physical GPUs | ✅ | ✅ | ✅ (if card supports it) | ✅ |
 | Each pod limited to its own memory | ❌ | ✅ | ✅ | ✅ |
 | Different sizes per workload | ❌ | ❌ | ⚠️ fixed shapes | ✅ |
-| Works on my GPUs | ✅ | ✅ | ⏳ *depends on model* | ✅ |
+| Works on my GPUs (L40S) | ✅ | ✅ | ❌ L40S has no MIG | ✅ |
 | Whole GPUs still possible for big jobs | ⚠️ | ⚠️ | ⚠️ repartition | ✅ |
 | No app changes | ✅ | ✅ | ✅ | ✅ |
 
